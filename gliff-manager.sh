@@ -385,7 +385,23 @@ ssh_config_write() { # <content-file>
   return 1
 }
 
+# Can ~/.ssh/config be replaced? ssh_config_write makes its temp file beside the
+# real file (through a link), so that directory must be writable. A config
+# Home Manager manages is a link into the read-only Nix store: it is not.
+ssh_config_writable() {
+  dir=${SSH_CONFIG%/*}
+  if [ -L "$SSH_CONFIG" ]; then
+    real=$(readlink -f -- "$SSH_CONFIG") || return 1
+    dir=${real%/*}
+  fi
+  while [ ! -d "$dir" ] && [ "$dir" != "${dir%/*}" ]; do dir=${dir%/*}; done
+  [ -w "$dir" ]
+}
+
 short_names_enable() {
+  if ! grep -qxF "$INCLUDE_MARK" "$SSH_CONFIG" 2>/dev/null && ! ssh_config_writable; then
+    die "cannot write $SSH_CONFIG (is it managed by Home Manager?); short names stay off"
+  fi
   prefs_update '.shortNames = true'
   if ! names_build; then
     prefs_update '.shortNames = false'
@@ -402,7 +418,9 @@ short_names_enable() {
     ssh_config_copy "$tmp/current"
     if ! { { printf '%s\nInclude "%s"\n\n' "$INCLUDE_MARK" "$NAMES_CONF"
              cat "$tmp/current"; } >"$tmp/new" && ssh_config_write "$tmp/new"; }; then
-      rm -rf "$tmp"; die "cannot write $SSH_CONFIG"
+      rm -rf "$tmp"
+      short_names_disable
+      die "cannot write $SSH_CONFIG, so short names are switched off again"
     fi
     rm -rf "$tmp"
   fi
