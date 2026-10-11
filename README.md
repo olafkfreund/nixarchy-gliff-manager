@@ -1,15 +1,15 @@
-# Gliff-Manager
+# Gliff-Manager for Nixarchy
 
-An [Omarchy](https://omarchy.org) shell plugin for
+A NixOS-ready fork of [Gliff-Manager](https://github.com/28allday/Gliff-Manager) by Gavin Nugent. An [Omarchy](https://omarchy.org) shell plugin for
 [gliff](https://github.com/omacom/gliff), the remote desktop for Hyprland. A bar
 icon and a dropdown that list your gliff machines, check each one over ssh, fix
 the common setup problems, and connect each machine the right way.
 
 ![The Gliff-Manager panel, with example machines](preview.png)
 
-> **Needs Omarchy 4.5 with gliff installed, or Omarchy on the edge channel.**
-> gliff is not installed by default on Omarchy yet, so check it is there
-> (`omarchy pkg add gliff`) on this computer and on every machine you connect to.
+> **On nixarchy this is a default.** gliff is preinstalled there and so is this
+> plugin; nothing to do. Elsewhere you need gliff on this computer and on every
+> machine you connect to.
 
 ## What it does
 
@@ -46,8 +46,8 @@ the common setup problems, and connect each machine the right way.
 
 | Shown | What the fix does |
 |-------|-------------------|
-| gliff is not installed there | Installs gliff on that machine from its own package repository |
-| Ready, with a fix button | Installs a small `gliff-server` wrapper so plain `gliff` works too (see below) |
+| gliff is not installed there | Opens a terminal that says how to get gliff on that machine (it runs no package manager) |
+| Ready, with a fix button (not on NixOS) | Installs a small `gliff-server` wrapper so plain `gliff` works too (see below) |
 | Hyprland runs as another user | Switches the entry to that user, who owns the session |
 | Host key not saved yet / changed | Opens an ssh login so you can check and accept the key |
 | Tailscale wants you to sign in again | Opens an ssh login and the Tailscale sign-in page in your browser; approve it there |
@@ -59,50 +59,74 @@ hours by default) it wants a fresh browser sign-in before it lets ssh in.
 Connecting checks for this first, so you get the message rather than a gliff
 window that hangs.
 
-## Requirements
+## What this fork changes
 
-- Omarchy 4.5, or Omarchy on the edge channel, with the shell running.
-- gliff on this computer and on each remote machine. It is not installed by
-  default yet: add it with `omarchy pkg add gliff`. The install fix in the
-  panel does this for a remote machine.
-- ssh access to each machine with a key: checks run without a password prompt.
-- `jq` (part of Omarchy) and, for the Tailscale list, `tailscale`.
+Upstream's helper assumed Arch. Five things broke on NixOS:
+
+1. **A pacman-only scan.** The plugin read the repo channel and usage from
+   `pacman-conf`; none of that exists on NixOS. The channel is now the `ID` in
+   `/etc/os-release`, and no `pacman` or `yay` appears in the code (CI greps). (Arch machines now show `arch` where the Omarchy channel used to be.)
+2. **The gliff version came from `pacman -Q`.** It now comes from
+   `gliff --version` locally and `gliff-server --version` on the remote.
+3. **The client process name.** nixpkgs wraps gliff, so the process is
+   `.gliff-wrapped`; the helper now finds both names.
+4. **The Hyprland owner.** It is `.Hyprland-wrapp` on NixOS (the kernel's
+   15-character name), so `ps -C Hyprland` found nothing; it uses `pgrep` now.
+5. **Arch-only fixes.** The install fix ran pacman, and the session wrapper
+   goes to `/usr/local/bin`; the install fix now explains how to get gliff, and
+   the session fix is not offered on NixOS.
 
 ## Install
 
+**nixarchy:** a default, nothing to do. Opt out with
+`programs.nixarchy.defaultPlugins.gliff-manager = false`.
+
+**Other NixOS**, with Home Manager and gliff installed:
+
+```nix
+{
+  inputs.nixarchy-gliff-manager.url = "github:olafkfreund/nixarchy-gliff-manager";
+  # in your Home Manager configuration:
+  imports = [ inputs.nixarchy-gliff-manager.homeManagerModules.default ];
+  programs.gliff-manager.enable = true;
+}
 ```
-omarchy plugin add https://github.com/28allday/Gliff-Manager --enable
+
+Then run `omarchy plugin enable nixarchy.gliff-manager right` once. The module
+steps aside, with a warning, when nixarchy is on.
+
+**Arch:**
+
+```
+omarchy plugin add https://github.com/olafkfreund/nixarchy-gliff-manager --enable
 ```
 
 Then click the icon in the bar, or run:
 
 ```
-omarchy-shell nosignal.gliff-manager toggle
+omarchy-shell nixarchy.gliff-manager toggle
 ```
+
+**Had upstream's copy?** Remove it: `omarchy plugin remove nosignal.gliff-manager`.
+Both share `~/.config/gliff-manager/`.
+
+## Requirements
+
+- gliff on this computer and on each remote machine.
+- ssh access to each machine with a key: checks run without a password prompt.
+- `jq` and, for the Tailscale list, `tailscale`.
 
 ## Remove
 
 1. If **Short tab names** is on, switch it off first. That takes its
    `Include` line back out of `~/.ssh/config`.
-2. Remove the plugin:
-
-   ```
-   omarchy plugin remove nosignal.gliff-manager
-   ```
-
+2. Remove the plugin: `omarchy plugin remove nixarchy.gliff-manager`
+   (on nixarchy, set the opt-out above).
 3. Delete its settings and cache, if you want them gone too:
-
-   ```
-   rm -rf ~/.config/gliff-manager ~/.cache/gliff-manager
-   ```
-
-4. On any machine where you used the session fix, remove the wrapper, and the
-   small cache folder that held the scripts it staged there:
-
-   ```
-   sudo rm /usr/local/bin/gliff-server
-   rm -rf ~/.cache/gliff-manager
-   ```
+   `rm -rf ~/.config/gliff-manager ~/.cache/gliff-manager`.
+4. On any machine where you used the session fix (not offered on NixOS), remove
+   the wrapper:
+   `sudo rm /usr/local/bin/gliff-server`.
 
 If you removed the plugin with short names still on, open `~/.ssh/config` and
 delete the line `# Added by Gliff-Manager: short machine names for gliff tabs`
@@ -124,7 +148,7 @@ Right-click the bar icon to check every machine again. The icon turns the
 accent colour while a gliff window is connected. In a gliff window,
 `Shift+Esc` hands your keyboard shortcuts back to your own desktop.
 
-## The session wrapper
+## The session wrapper (not on NixOS)
 
 On some machines an ssh login gets no `XDG_RUNTIME_DIR`, so `gliff-server`
 cannot find the Hyprland session and the connection fails with "find Hyprland
@@ -148,11 +172,12 @@ On this computer, nothing runs with `sudo`. It writes:
 - `~/.ssh/config`: only while **Short tab names** is on, and only the one
   `Include` line described above.
 
-On a remote machine, the checks only read. The fix buttons copy a small script
-into `~/.cache/gliff-manager/` there, then open a terminal on this computer
-where you type the remote password for `sudo` yourself: to install the gliff
-package, or the `/usr/local/bin/gliff-server` wrapper. Nothing on a remote
-changes without that.
+On a remote machine, the checks only read. The install fix copies a small
+script into `~/.cache/gliff-manager/` there and opens a terminal that prints
+how to get gliff; it installs nothing. Only the session fix (not offered on
+NixOS) uses `sudo`, in a terminal where you type the remote password yourself,
+to install `/usr/local/bin/gliff-server`. Nothing on a remote changes without
+that.
 
 ## Good to know
 
@@ -176,6 +201,11 @@ changes without that.
   yourself: `gliff-manager.sh status full`, `gliff-manager.sh connect user@host`,
   and so on. Run it with no arguments for the list.
 
-## Licence
+## Development
 
-MIT
+`nix flake check` runs the lot (manifest, shellcheck, qmllint, the Home Manager
+module and a behaviour test against real processes); `nix develop` gives the tools.
+
+## License
+
+MIT. Gliff-Manager is by Gavin Nugent.

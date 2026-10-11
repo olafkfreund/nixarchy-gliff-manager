@@ -460,7 +460,7 @@ local_json() {
   if printf '%s\n' "$vendors" | grep -qx 10de && [ "$(printf '%s\n' "$vendors" | grep -c .)" -gt 1 ]; then
     hybrid=true
   fi
-  ver=$(pacman -Q gliff 2>/dev/null | awk '{ print $2 }')
+  ver=$(gliff --version 2>/dev/null | awk '{ print $2 }')
   pref=$(prefs_read | jq -r '.video // "auto"')
   jq -n \
     --arg version "$ver" \
@@ -495,7 +495,7 @@ video_flag() {
 # with spaces (a --server-bin command) stay intact. `host` is the machine named
 # on the command line, which gliff shows first.
 gliff_procs() {
-  for pid in $(pgrep -u "$(id -u)" -x gliff 2>/dev/null); do
+  for pid in $(pgrep -u "$(id -u)" -x 'gliff|\.gliff-wrapped' 2>/dev/null); do
     [ -r "/proc/$pid/cmdline" ] || continue
     tr '\0' '\n' <"/proc/$pid/cmdline" | awk -v pid="$pid" '
       NR == 1 { next }
@@ -554,14 +554,8 @@ case " $(id -nG) " in *" wheel "*) echo admin=1 ;; *) echo admin=0 ;; esac
 if command -v omarchy >/dev/null 2>&1; then
   echo "omarchy=$(omarchy version 2>/dev/null | head -n 1)"
 fi
-if command -v pacman-conf >/dev/null 2>&1; then
-  srv=$(pacman-conf --repo omarchy Server 2>/dev/null | head -n 1)
-  if [ -n "$srv" ]; then
-    echo "channel=$(basename "$(dirname "$srv")")"
-    echo "repo_usage=$(pacman-conf --repo omarchy Usage 2>/dev/null | tr "\n" " ")"
-  fi
-fi
-v=$(pacman -Q gliff 2>/dev/null) && echo "gliff=${v#gliff }"
+os=$(. /etc/os-release 2>/dev/null && printf "%s" "$ID"); echo "channel=$os"
+v=$(gliff-server --version 2>/dev/null) && echo "gliff=${v##* }"
 srvbin=$(command -v gliff-server 2>/dev/null)
 echo "server=$srvbin"
 wrapped=0
@@ -571,7 +565,8 @@ if [ -n "$srvbin" ] && [ "$srvbin" != /usr/bin/gliff-server ] &&
 fi
 echo "wrapped=$wrapped"
 if [ -n "${XDG_RUNTIME_DIR:-}" ]; then echo xdg=1; else echo xdg=0; fi
-echo "hypr_owner=$(ps -o user= -C Hyprland 2>/dev/null | head -n 1 | tr -d " ")"
+hp=$(pgrep -x "Hyprland|\.Hyprland-wrapp" 2>/dev/null | head -n 1)
+echo "hypr_owner=$( [ -n "$hp" ] && ps -o user= -p "$hp" | tr -d " ")"
 if [ -d "/run/user/$uid/hypr" ]; then echo session=1; else echo session=0; fi
 n=0
 outs=""
@@ -628,7 +623,6 @@ probe_one() {
         user: ($r.user // ""), uid: ($r.uid // ""), arch: ($r.arch // ""),
         admin: (($r.admin // "0") == "1"),
         omarchy: ($r.omarchy // ""), channel: ($r.channel // ""),
-        repoNoInstall: (($r.repo_usage // "All") | test("All|Install") | not),
         gliff: ($r.gliff // ""), server: ($r.server // ""),
         wrapped: (($r.wrapped // "0") == "1"),
         xdg: (($r.xdg // "0") == "1"),
@@ -1010,23 +1004,16 @@ ssh -t -- "$1" "sudo install -m755 \"\$HOME/.cache/gliff-manager/gliff-server\" 
 }
 
 REMOTE_INSTALL='
-if pacman -Sp gliff >/dev/null 2>&1; then
-  sudo pacman -S --needed gliff
-  exit $?
-fi
-srv=$(pacman-conf --repo omarchy Server 2>/dev/null | head -n 1)
-file=$(bsdtar -xOf /var/lib/pacman/sync/omarchy.db "*/desc" 2>/dev/null | awk "
-  /^%FILENAME%/ { getline; f = \$0; next }
-  /^%NAME%/ { getline; if (\$0 == \"gliff\") { print f; exit } }")
-if [ -n "$srv" ] && [ -n "$file" ]; then
-  echo "This machine lists gliff but will not install from that repo directly;"
-  echo "installing the package file instead: $file"
-  sudo pacman -U "$srv/$file"
+[ -r /etc/os-release ] && . /etc/os-release
+if [ "${ID:-}" = nixos ]; then
+  echo "On nixarchy gliff is preinstalled unless excluded (preinstallsExclude): update this machine."
+  echo "On other NixOS, see the Gliff-Manager README for how to add gliff."
+elif command -v omarchy >/dev/null 2>&1; then
+  echo "Install gliff with: omarchy pkg add gliff"
 else
-  echo "gliff is not in this machine'"'"'s package lists yet."
-  echo "Run omarchy update on it, then try again."
-  exit 1
+  echo "gliff is not installed here. See the Gliff-Manager README."
 fi
+exit 1
 '
 
 # ssh joins its command words with spaces for the remote shell to re-read, so
@@ -1041,8 +1028,7 @@ stage() {
 install_gliff() {
   stage "$1" "$REMOTE_INSTALL" install.sh
   in_terminal '
-echo "Installing gliff on $1."
-echo "sudo will ask for the password of the user on that machine."
+echo "How to get gliff on $1."
 echo
 ssh -t -- "$1" "sh \"\$HOME/.cache/gliff-manager/install.sh\""' "$1"
 }
