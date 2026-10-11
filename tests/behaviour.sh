@@ -18,6 +18,7 @@ cleanup() { # children first: a killed parent leaves its sleeps behind
     for c in $(pgrep -P "$p" 2>/dev/null); do pkill -P "$c" 2>/dev/null; kill "$c" 2>/dev/null; done
     kill "$p" 2>/dev/null
   done
+  chmod -R u+w "$tmp" 2>/dev/null
   rm -rf "$tmp"
 }
 trap cleanup EXIT
@@ -75,4 +76,24 @@ check probe '.gliff == "0.3.1" and .hyprOwner == $u' \
   "$(sh "$plugin/gliff-manager.sh" probe me@box)" --arg u "$(id -un)"
 check live '. == [{pid: .[0].pid, target: "me@box", mode: "headless"}]' \
   "$(sh "$plugin/gliff-manager.sh" live)"
+
+# A ~/.ssh/config that is a link into a read-only directory (Home Manager's
+# store link): turning short names on must refuse and change nothing.
+mkdir -p "$tmp/ro" "$HOME/.ssh"
+echo 'Host x' >"$tmp/ro/config"
+ln -s "$tmp/ro/config" "$HOME/.ssh/config"
+chmod 555 "$tmp/ro"
+if [ -w "$tmp/ro" ]; then
+  echo "FAIL: short-names: cannot make a read-only directory (running as root?)"; fail=1
+else
+  rc=0; sh "$plugin/gliff-manager.sh" short-names on >"$tmp/sn.out" 2>&1 || rc=$?
+  gm=$XDG_CONFIG_HOME/gliff-manager
+  if [ "$rc" -ne 0 ] && ! grep -qs '"shortNames": *true' "$gm/machines.json" &&
+     [ ! -e "$gm/names.json" ] && [ ! -e "$gm/ssh_config" ]; then
+    echo "ok: short-names refuses on a read-only ssh config"
+  else
+    echo "FAIL: short-names on a read-only ssh config (rc=$rc)"
+    cat "$tmp/sn.out"; ls -la "$gm" 2>&1; cat "$gm/machines.json" 2>&1; fail=1
+  fi
+fi
 exit $fail

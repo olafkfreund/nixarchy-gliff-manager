@@ -45,6 +45,9 @@ the common setup problems, and connect each machine the right way.
   conditional `Match` rules, or if the name clashes with another machine.
   As a bonus, `ssh studio` works in a
   terminal too. Changing this setting keeps existing connections tracked.
+  If `~/.ssh/config` is managed by Home Manager (a link into the Nix store),
+  turning short names on refuses with a message and changes nothing; full names
+  keep working.
 - **Fixes common problems**, each in a terminal so you type any password
   yourself:
 
