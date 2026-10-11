@@ -162,7 +162,7 @@
                 rc=0; qmllint Panel.qml >/dev/null 2>&1 || rc=$?
                 [ "$rc" -ne 255 ]
                 # The module: links the plugin when nixarchy is off, only warns when on.
-                [ "$offLinks $offWarns $onLinks $onWarns" = "true false false true" ]
+                [ "$offLinks $offWarns $onLinks $onWarns" = "true false false true" ] || { echo "home-manager module: got (offLinks offWarns onLinks onWarns) = $offLinks $offWarns $onLinks $onWarns, want true false false true" >&2; exit 1; }
                 cd "$TMPDIR"
                 sh ${./tests/behaviour.sh} ${plugin}
                 touch $out
