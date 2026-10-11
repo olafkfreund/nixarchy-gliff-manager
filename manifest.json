@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "nixarchy.gliff-manager",
   "name": "Gliff-Manager",
-  "version": "0.1.0-nixarchy.1",
+  "version": "0.1.0-nixarchy.2",
   "author": "olafkfreund (nixarchy port); Gavin Nugent (Gliff-Manager, upstream)",
   "homepage": "https://github.com/olafkfreund/nixarchy-gliff-manager",
   "license": "MIT",
