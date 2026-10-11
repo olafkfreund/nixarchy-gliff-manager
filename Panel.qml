@@ -19,8 +19,8 @@ import qs.Ui
 // While closed, only `live` runs, slowly, to colour the bar icon.
 Panel {
   id: root
-  moduleName: "nosignal.gliff-manager"
-  ipcTarget: "nosignal.gliff-manager"
+  moduleName: "nixarchy.gliff-manager"
+  ipcTarget: "nixarchy.gliff-manager"
   manageIpc: false
 
   readonly property string scriptPath: String(Qt.resolvedUrl("gliff-manager.sh")).replace(/^file:\/\//, "")
@@ -150,7 +150,7 @@ Panel {
     var text = "Ready · " + bits.join(" · ")
     if (root.localInfo && root.localInfo.version && p.gliff !== root.localInfo.version)
       text = "Ready · gliff " + p.gliff + " there, " + root.localInfo.version + " here"
-    if (!p.xdg && !p.wrapped)
+    if (!p.xdg && !p.wrapped && p.channel !== "nixos")
       return { tone: "ok", text: text, fix: "fix-session" }
     return { tone: "ok", text: text, fix: "" }
   }
@@ -526,7 +526,7 @@ Panel {
             textFormat: Text.PlainText
             visible: root.localInfo !== null && !root.localInfo.installed
             width: parent.width
-            text: "gliff is not installed on this computer. Install it with: omarchy pkg add gliff"
+            text: "gliff is not installed on this computer."
             color: root.urgent
             font.family: root.fontFamily
             font.pixelSize: Style.font.bodySmall
