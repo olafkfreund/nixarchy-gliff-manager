@@ -1005,11 +1005,11 @@ ssh -t -- "$1" "sudo install -m755 \"\$HOME/.cache/gliff-manager/gliff-server\" 
 
 REMOTE_INSTALL='
 . /etc/os-release 2>/dev/null
-if command -v omarchy >/dev/null 2>&1; then
-  echo "Install gliff with: omarchy pkg add gliff"
-elif [ "${ID:-}" = nixos ]; then
+if [ "${ID:-}" = nixos ]; then
   echo "On nixarchy gliff is preinstalled: update this machine to get it."
   echo "On other NixOS, see the Gliff-Manager README for how to add gliff."
+elif command -v omarchy >/dev/null 2>&1; then
+  echo "Install gliff with: omarchy pkg add gliff"
 else
   echo "gliff is not installed here. See the Gliff-Manager README."
 fi
