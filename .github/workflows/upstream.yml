@@ -1,0 +1,30 @@
+name: upstream
+
+# Read-only: says when 28allday/Gliff-Manager has moved past the commit this
+# fork was last synced to (the UPSTREAM file). It never pushes or opens a PR.
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: open an issue if upstream moved
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          known=$(tr -d '[:space:]' < UPSTREAM)
+          head=$(gh api repos/28allday/Gliff-Manager/commits/HEAD -q .sha)
+          [ "$head" != "$known" ] || { echo "upstream unchanged at $known"; exit 0; }
+          open=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
+            --search '"Upstream moved" in:title' --json number -q length)
+          [ "$open" -eq 0 ] || { echo "an 'Upstream moved' issue is already open"; exit 0; }
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "Upstream moved" \
+            --body "28allday/Gliff-Manager is at $head; this fork last synced $known. Compare: https://github.com/28allday/Gliff-Manager/compare/$known...$head"
