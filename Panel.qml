@@ -156,7 +156,7 @@ Panel {
   }
 
   function fixLabel(fix, m) {
-    if (fix === "install") return "Install gliff on " + root.shortHost(m.target)
+    if (fix === "install") return "How to get gliff on " + root.shortHost(m.target)
     if (fix === "fix-session") return "Install the session fix so plain gliff works too"
     if (fix === "trust") return "Log in once in a terminal to save its host key"
     if (fix === "signin") return "Sign in to Tailscale in your browser so ssh is allowed again"

@@ -65,7 +65,7 @@ Upstream's helper assumed Arch. Five things broke on NixOS:
 
 1. **A pacman-only scan.** The plugin read the repo channel and usage from
    `pacman-conf`; none of that exists on NixOS. The channel is now the `ID` in
-   `/etc/os-release`, and no `pacman` or `yay` appears in the code (CI greps).
+   `/etc/os-release`, and no `pacman` or `yay` appears in the code (CI greps). (Arch machines now show `arch` where the Omarchy channel used to be.)
 2. **The gliff version came from `pacman -Q`.** It now comes from
    `gliff --version` locally and `gliff-server --version` on the remote.
 3. **The client process name.** nixpkgs wraps gliff, so the process is
@@ -124,7 +124,8 @@ Both share `~/.config/gliff-manager/`.
    (on nixarchy, set the opt-out above).
 3. Delete its settings and cache, if you want them gone too:
    `rm -rf ~/.config/gliff-manager ~/.cache/gliff-manager`.
-4. On any machine where you used the session fix, remove the wrapper:
+4. On any machine where you used the session fix (not offered on NixOS), remove
+   the wrapper:
    `sudo rm /usr/local/bin/gliff-server`.
 
 If you removed the plugin with short names still on, open `~/.ssh/config` and
@@ -147,7 +148,7 @@ Right-click the bar icon to check every machine again. The icon turns the
 accent colour while a gliff window is connected. In a gliff window,
 `Shift+Esc` hands your keyboard shortcuts back to your own desktop.
 
-## The session wrapper
+## The session wrapper (not on NixOS)
 
 On some machines an ssh login gets no `XDG_RUNTIME_DIR`, so `gliff-server`
 cannot find the Hyprland session and the connection fails with "find Hyprland
@@ -171,11 +172,12 @@ On this computer, nothing runs with `sudo`. It writes:
 - `~/.ssh/config`: only while **Short tab names** is on, and only the one
   `Include` line described above.
 
-On a remote machine, the checks only read. The fix buttons copy a small script
-into `~/.cache/gliff-manager/` there, then open a terminal on this computer
-where you type the remote password for `sudo` yourself: to install the gliff
-package, or the `/usr/local/bin/gliff-server` wrapper. Nothing on a remote
-changes without that.
+On a remote machine, the checks only read. The install fix copies a small
+script into `~/.cache/gliff-manager/` there and opens a terminal that prints
+how to get gliff; it installs nothing. Only the session fix (not offered on
+NixOS) uses `sudo`, in a terminal where you type the remote password yourself,
+to install `/usr/local/bin/gliff-server`. Nothing on a remote changes without
+that.
 
 ## Good to know
 

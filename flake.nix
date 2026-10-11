@@ -122,6 +122,8 @@
           off = (hm { }).config;
           on = (hm { programs.nixarchy.enable = true; }).config;
           flag = pkgs.lib.boolToString;
+          # Only the module's own warning: Home Manager may add others.
+          ownWarning = x: builtins.any (pkgs.lib.hasPrefix "programs.gliff-manager:") x.warnings;
         in
         {
           default =
@@ -138,10 +140,12 @@
                   procps
                   gawk
                 ];
-                offLinks = flag (off.xdg.configFile ? "omarchy/plugins/nixarchy.gliff-manager");
-                offWarns = flag (off.warnings != [ ]);
+                offLinks = flag (
+                  (off.xdg.configFile."omarchy/plugins/nixarchy.gliff-manager".source or null) == plugin
+                );
+                offWarns = flag (ownWarning off);
                 onLinks = flag (on.xdg.configFile ? "omarchy/plugins/nixarchy.gliff-manager");
-                onWarns = flag (on.warnings != [ ]);
+                onWarns = flag (ownWarning on);
               }
               ''
                 cd ${plugin}
@@ -155,7 +159,7 @@
                   echo "pacman/yay on a non-comment line"; exit 1
                 fi
                 shellcheck -s sh gliff-manager.sh
-                rc=0; qmllint Panel.qml || rc=$?
+                rc=0; qmllint Panel.qml >/dev/null 2>&1 || rc=$?
                 [ "$rc" -ne 255 ]
                 # The module: links the plugin when nixarchy is off, only warns when on.
                 [ "$offLinks $offWarns $onLinks $onWarns" = "true false false true" ]

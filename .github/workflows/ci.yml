@@ -29,6 +29,10 @@ jobs:
 
       - run: nix build .#default --print-build-logs
 
+      # docs/index.md is README.md plus four lines of front matter.
+      - name: docs/index.md matches README.md
+        run: tail -n +5 docs/index.md | diff - README.md
+
       # The one rule a careless derivation breaks: omarchy-plugin-validate
       # refuses any symlink inside the plugin folder. `result` itself is a
       # symlink, so look inside what it points to.

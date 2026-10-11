@@ -16,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
       - name: open an issue if upstream moved
         env:
           GH_TOKEN: ${{ github.token }}
@@ -23,8 +25,11 @@ jobs:
           known=$(tr -d '[:space:]' < UPSTREAM)
           head=$(gh api repos/28allday/Gliff-Manager/commits/HEAD -q .sha)
           [ "$head" != "$known" ] || { echo "upstream unchanged at $known"; exit 0; }
-          open=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
-            --search '"Upstream moved" in:title' --json number -q length)
-          [ "$open" -eq 0 ] || { echo "an 'Upstream moved' issue is already open"; exit 0; }
-          gh issue create --repo "$GITHUB_REPOSITORY" --title "Upstream moved" \
+          short=$(printf '%.7s' "$head")
+          title="Upstream moved to $short"
+          # Open or closed: a closed issue means a human has dealt with this sha.
+          seen=$(gh issue list --repo "$GITHUB_REPOSITORY" --state all \
+            --search "\"$title\" in:title" --json title -q "map(select(.title == \"$title\")) | length")
+          [ "$seen" -eq 0 ] || { echo "'$title' already filed"; exit 0; }
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" \
             --body "28allday/Gliff-Manager is at $head; this fork last synced $known. Compare: https://github.com/28allday/Gliff-Manager/compare/$known...$head"

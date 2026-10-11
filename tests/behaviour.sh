@@ -43,17 +43,20 @@ cp "$bash" "$tmp/.Hyprland-wrapp"
 cp "$bash" "$tmp/.gliff-wrapped"
 cp "$bash" "$tmp/tab/ssh"
 "$tmp/.Hyprland-wrapp" -c 'sleep 600; :' &
+hypr=$!
 pids="$pids $!"
 # gliff's tab: an ssh child of the gliff process. Its argv is `ssh -c SCRIPT me@box`,
 # so the helper sees host me@box.
 "$tmp/.gliff-wrapped" -c "$tmp/tab/ssh -c 'sleep 600; :' me@box; :" --headless me@box &
+gliff=$!
 pids="$pids $!"
 
+# Ready means our own two processes, and the ssh tab under the gliff one.
 i=0
-while [ $i -lt 50 ]; do
-  pgrep -x '\.Hyprland-wrapp' >/dev/null && pgrep -x '\.gliff-wrapped' >/dev/null &&
-    pgrep -P "$(pgrep -x '\.gliff-wrapped')" -x ssh >/dev/null && break
-  i=$((i + 1)); sleep 0.1
+until pgrep -P "$hypr" -x sleep >/dev/null && pgrep -P "$gliff" -x ssh >/dev/null; do
+  i=$((i + 1))
+  [ $i -lt 50 ] || { echo "FAIL: the fake Hyprland and gliff processes never started"; exit 1; }
+  sleep 0.1
 done
 
 fail=0
