@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 // Gliff-Manager: a bar icon and dropdown for gliff remote desktop sessions.
@@ -25,9 +26,9 @@ Panel {
 
   readonly property string scriptPath: String(Qt.resolvedUrl("gliff-manager.sh")).replace(/^file:\/\//, "")
 
-  readonly property color foreground: bar ? bar.foreground : Color.foreground
-  readonly property color urgent: bar ? bar.urgent : Color.urgent
-  readonly property color accent: Color.accent
+  readonly property color foreground: bar ? bar.foreground : Commons.Color.foreground
+  readonly property color urgent: bar ? bar.urgent : Commons.Color.urgent
+  readonly property color accent: Commons.Color.accent
   readonly property color dim: Qt.darker(foreground, 1.55)
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
 
@@ -443,7 +444,7 @@ Panel {
     tooltipText: root.liveCount > 0
       ? "Gliff-Manager · " + root.liveCount + (root.liveCount === 1 ? " session" : " sessions")
       : "Gliff-Manager"
-    foreground: root.liveCount > 0 ? Color.accent : root.barForeground
+    foreground: root.liveCount > 0 ? Commons.Color.accent : root.barForeground
     onPressed: function(code) {
       if (code === Qt.RightButton) root.refresh(true)
       else root.toggle()
